@@ -6,7 +6,10 @@ import random
 import timeit
 
 # open (or create) a database
-db = edb.open('cremi')
+db = edb.open('cremi', backend='redis')
+
+print("Current contents (first 10 rows):")
+print(db.get().head(10))
 
 # start from a fresh database for demonstration purposes
 db.clear()
@@ -46,8 +49,8 @@ db.put(
 print("Creating dataframe...")
 df = db.get()
 
-print("All results:")
-print(df)
+print("All results (first 10 rows):")
+print(df.head(10))
 print()
 
 # get only selected results
