@@ -1,5 +1,7 @@
 from __future__ import print_function
 from simplekv.fs import FilesystemStore
+from simplekv.memory.redisstore import RedisStore
+from redis import StrictRedis
 import json
 import os
 import pandas
@@ -131,14 +133,46 @@ class DataBase(object):
                 k = k + {subkey: value}
                 self.put(k, v)
 
-def open(db_name):
+def open(db_name, backend='filesystem', **kwargs):
 
     path = os.path.join(os.path.expanduser('~'), '.experimentdb', db_name)
 
-    if not os.path.exists(path):
-        try:
-            os.makedirs(path)
-        except Exception as e:
-            print(e)
-            pass
-    return DataBase(FilesystemStore(path))
+    if backend == 'filesystem':
+
+        print("Using filesystem backend")
+
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path)
+            except Exception as e:
+                print(e)
+                pass
+        return DataBase(FilesystemStore(path))
+
+    if backend == 'redis':
+
+        print("Using redis backend")
+
+        # find or create a new db index
+        redis_config_store = RedisStore(StrictRedis(db=0, **kwargs))
+
+        if db_name in redis_config_store:
+
+            db_index = int(redis_config_store.get(db_name))
+            print("Database", db_name, "already exists with index", db_index)
+
+        else:
+
+            if 'next_db_index' in redis_config_store:
+                next_db_index = int(redis_config_store.get('next_db_index'))
+                db_index = next_db_index
+                next_db_index += 1
+                redis_config_store.put('next_db_index', str(next_db_index))
+            else:
+                db_index = 1
+                redis_config_store.put('next_db_index', '2')
+
+            print("New database", db_name, "created with index", db_index)
+            redis_config_store.put(db_name, db_index)
+
+        return DataBase(RedisStore(StrictRedis(db=db_index, **kwargs)))

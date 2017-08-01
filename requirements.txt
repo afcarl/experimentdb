@@ -1,2 +1,3 @@
 simplekv
 pandas
+redis
